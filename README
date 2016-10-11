@@ -1,0 +1,39 @@
+osinfo-db-tools
+===============
+
+libosinfo is a project providing information about operating systems,
+hypervisors and the (virtual) hardware devices they can support.
+
+This package contains a set of tools to assist administrators and
+developers in managing the database.
+
+osinfo-db-tools is Free Software and licenced under LGPLv2+.
+
+The latest official releases can be found at:
+
+    https://fedorahosted.org/releases/l/i/libosinfo/
+
+Dependencies
+============
+
+- Required:
+  - gobject-2.0
+  - gio-2.0
+  - libxml-2.0
+  - libxslt-1.0
+
+Patch submissions
+=================
+
+Patch submissions are welcomed from any interested contributor. Please
+use the libosinfo list for any patch submissions, or discussions about
+the code:
+
+    https://www.redhat.com/mailman/listinfo/libosinfo
+
+For further information about libosinfo please consult the project
+homepage
+
+   https://libosinfo.org/
+
+--End

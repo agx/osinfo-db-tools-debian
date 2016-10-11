@@ -1,0 +1,1504 @@
+2016-07-25  Daniel P. Berrange  <berrange@redhat.com>
+
+	osinfo-db-util: Update paths to be compliant with specification
+	Per the osinfo db layout spec we have
+
+	 1. system location
+
+	    env $OSINFO_SYSTEM_DIR, defaulting to /usr/share/osinfo
+
+	 2. local location
+
+	    env $OSINFO_LOCAL_DIR, defaulting to /etc/osinfo
+
+	 3. user location
+
+	    env $OSINFO_USER_DIR, defaulting to $XDG_CONFIG_DIR/osinfo
+	    or $HOME/.config/osinfo
+
+	osinfo-db-export: generate filename if none is given
+	Currently if no filename is given to the export command
+	the archive will be written to stdout, which is less than
+	helpful as default behaviour. Change it to generate a
+	suitable default filename. Export to stdout can still be
+	requested explicitly by giving a filename of '-'.
+
+2016-07-18  Daniel P. Berrange  <berrange@redhat.com>
+
+	osinfo-db-export: embed a file called "VERSION"
+	Although the version can be inferred from the archive
+	filename, once extracted this info is not available.
+	Populate the archive with a file called VERSION which
+	will be extracted into the root of the DB directory.
+
+	osinfo-db-export: remove '-' in automatic version
+	Replace automatic version "2016-07-18" with "20160708" since
+	"-" is not a valid character in version numbers for RPM and
+	dates sort correctly without "-" being needed.
+
+2016-07-08  Daniel P. Berrange  <berrange@redhat.com>
+
+	tools: fix typo  s/termsof/terms of/
+
+	Remove defattr from the RPM spec
+	The use of defattr is long since obsolete with RPM
+
+	Fix source link in the RPM spec
+
+	Filter list of files included in created tar
+	Don't include hidden files or editor backup files in the
+	exported tar. Also whitelist to only include files with
+	a .xml, .rng or .ids suffix. This facilitates running
+	against a local git repo which may have other files such
+	as the automake/autoconf .in and .am files.
+
+	Explicitly set timestamps on entries in created tar file
+	Always set a timestamp on entries in the created tar file
+	to reflect the time at which the tar was created. This
+	ensures when people import new versions of the database,
+	the files get newer timestamps.
+
+	Fix swapped file/directory permissions in tar file
+	Plain files were given mode 0755 while dirs got 0644, the exact
+	opposite of what they should have.
+
+	Remove print of filenames when --verbose is not used
+	The osinfo-db-validate command has a --verbose arg to request
+	printing of filenames as they are validated. Remove the stray
+	g_print() that duplicated this
+
+	Set a valid error domain for GError
+	GLib will print a warning if 0 is passed for the GQuark
+	error domain when setting a GError. Define a valid error
+	domain quark and use it.
+
+	Change osinfo-db-validate to default to a standard location
+	Instead of requiring a list of paths to be passed in, default
+	to validating files from the standard database locations.
+
+	Find RNG schema in default database locations
+	With the split out database, the RNG schema will no longer
+	be installed by the code, instead it will be distributed
+	as part of the database. Thus we should look in the database
+	locations to find the schema.
+
+	Add a new osinfo-db-path tool for reporting db locations
+	Applications or system administrators accessing the osinfo
+	database directly (instead of via the libosinfo API) will
+	need a well defined means of getting the standard database
+	locations. The osinfo-db-tool is a trivial command that
+	can serve this purpose. eg
+
+	$ osinfo-db-path --system
+	/usr/local/share/libosinfo/db
+
+	$ osinfo-db-path --user
+	/home/berrange/.config/libosinfo/db
+
+2016-06-28  Daniel P. Berrange  <berrange@redhat.com>
+
+	Fix description of import/export commands
+	The command line option help was reporting the wrong description
+	for the import/export commands due to cut+paste mistake.
+
+	Share code for getting database path locations
+	Both the osinfo-db-import and osinfo-db-export tools have
+	the same code for getting the database path locations. Pull
+	it out into a osinfo-db-util.c file for sharing.
+
+2016-06-15  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add osinfo-db-export tool for packing an osinfo database archive
+	Add a new osinfo-db-export tool which creates an archive in the
+	tar (pax) format, with XZ compression and can filling it with the
+	database files from one of the standard libosinfo database locations,
+	or a custom directory.
+
+	This makes it easy for users to create their own local custom database
+	content and then distribute and import it on many machines. It will
+	also be used for creating official release archives of the libosinfo
+	database from upstream.
+
+	 $ osinfo-db-export --verbose  osinfo-db-2016-06-15.tar.xz
+	 osinfo-db-export: d osinfo-db-2016-06-15/
+	 osinfo-db-export: d osinfo-db-2016-06-15/datamaps
+	 osinfo-db-export: r osinfo-db-2016-06-15/datamaps/windows-lang.xml
+	 osinfo-db-export: r osinfo-db-2016-06-15/datamaps/x11-keyboard.xml
+	 osinfo-db-export: d osinfo-db-2016-06-15/devices
+	 osinfo-db-export: r osinfo-db-2016-06-15/devices/qemu-pci.xml
+	 osinfo-db-export: r osinfo-db-2016-06-15/devices/qemu-ps2.xml
+	 osinfo-db-export: r osinfo-db-2016-06-15/devices/qemu-usb.xml
+	 osinfo-db-export: r osinfo-db-2016-06-15/devices/virtio-pci.xml
+	 osinfo-db-export: r osinfo-db-2016-06-15/devices/xen.xml
+	 osinfo-db-export: d osinfo-db-2016-06-15/hypervisors
+	 osinfo-db-export: r osinfo-db-2016-06-15/hypervisors/kvm.xml
+	 ...snip...
+
+	Add osinfo-db-import tool for unpacking an osinfo database archive
+	Add a new osinfo-db-import tool which takes an archive in the
+	tar (pax) format, with XZ compression and can extract its contents
+	into one of the standard libosinfo database locations.
+
+	This makes it easy for users to download new copies of the
+	database and unpack them in the right place.
+
+	eg
+
+	 $ osinfo-db-import -v osinfo-db-2016-06-15.tar.xz
+	 osinfo-db-import: d osinfo-db-2016-06-15/
+	 osinfo-db-import: r osinfo-db-2016-06-15/pci.ids
+	 osinfo-db-import: r osinfo-db-2016-06-15/usb.ids
+	 osinfo-db-import: d osinfo-db-2016-06-15/datamaps/
+	 osinfo-db-import: r osinfo-db-2016-06-15/datamaps/windows-lang.xml
+	 osinfo-db-import: r osinfo-db-2016-06-15/datamaps/x11-keyboard.xml
+	 osinfo-db-import: d osinfo-db-2016-06-15/devices/
+	 osinfo-db-import: r osinfo-db-2016-06-15/devices/qemu-pci.xml
+	 osinfo-db-import: r osinfo-db-2016-06-15/devices/qemu-ps2.xml
+	 osinfo-db-import: r osinfo-db-2016-06-15/devices/qemu-usb.xml
+	 osinfo-db-import: r osinfo-db-2016-06-15/devices/virtio-pci.xml
+	 osinfo-db-import: r osinfo-db-2016-06-15/devices/xen.xml
+	 ...snip...
+
+2016-05-13  Daniel P. Berrange  <berrange@redhat.com>
+
+	Import trimmed translations from libosinfo project
+	This set of trimmed translations was created using the
+	following commands
+
+	   $ cp ../../libosinfo/*.po .
+	   $ make osinfo-db-tools.pot
+	   $ make update-po
+
+	This creates new .po files that only contain message
+	strings for the content needed by the new repo.
+
+	Fix build system after creating initial repository
+	The initial repository state was created from libosinfo
+	GIT at revision:
+
+	  commit 501541a336cd29d3da48584f022ce329fef418dd
+	  Author: Fabiano Fidêncio <fidencio@redhat.com>
+	  Date:   Thu May 12 18:54:58 2016 +0200
+
+	    win,installer: Fix "Windwos" typo
+
+	It was initialized using the following commands:
+
+	 $ git clone libosinfo osinfo-db-tools
+	 $ cd osinfo-db-tools
+	 $ git filter-branch --index-filter 'git rm -r --cached \
+	      --ignore-unmatch src examples data db test \
+	      docs/reference tools/osinfo-detect.c \
+	      tools/osinfo-install-script.c \
+	      tools/osinfo-query.c po osinfo' HEAD
+	 $ git filter-branch -f --prune-empty HEAD
+	 $ git for-each-ref --format="%(refname)" refs/original/ | xargs -n 1 git update-ref -d
+	 $ git reflog expire --expire=now --all
+	 $ git gc --prune=now
+
+	This patch now edits the various build system files to
+	remove references to bits of the tree that were deleted,
+	and rename from libosinfo to osinfo-db-tools.
+
+	Currently this module contains a single command
+
+	  osinfo-db-validate
+
+	It will later be augmented with tools for importing
+	and exporting database archives.
+
+2016-05-11  Andrew Stormont  <andyjstormont@gmail.com>
+
+	build: Fix "--no-undefined" linker's flag for solaris
+	Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1302339
+	Acked-by: Fabiano Fidêncio <fidencio@redhat.com>
+
+2016-05-11  Fabiano Fidêncio  <fidencio@redhat.com>
+
+	build: Fix "--no-undefined" linker's flag for OSX
+	Apple's linker doesn't have support to "--no-undefined" and we must use
+	something equivalent, like: "-undefined,error".
+
+	The patch was test by Programmingkid and his positive feedback can be
+	seen here:
+	https://www.redhat.com/archives/libosinfo/2016-May/msg00164.html
+
+	Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1305016
+
+	Acked-by: Christophe Fergeau <cfergeau@redhat.com>
+
+2016-05-09  Fabiano Fidêncio  <fidencio@redhat.com>
+
+	opensuse,installer: Add JEOS script
+	The script has been tested and works as expected for the most recent
+	releases of OpenSUSE (Leap 4.21 and Tumbleweed).
+
+	Acked-by: Zeeshan Ali (Khattak) <zeeshanak@gnome.org>
+
+2016-04-19  Roman Bogorodskiy  <bogorodskiy@gmail.com>
+
+	README: adjust wording a little.
+
+	README: update homepage
+
+2016-01-13  Daniel P. Berrange  <berrange@redhat.com>
+
+	autobuild.sh: enable gtk doc build when testing
+
+	autobuild.sh: fix flag to turn on werror
+	In commit 97091136bd037aa44da13873ac910320b9ad7e6b we changed
+	to use gnulib's compiler warnings code, but forgot to change
+	the autobuild.sh flag to match. It should be --enable-werror
+
+	autobuild.sh: run parallel make for faster builds
+	Set MAKEFLAGS to use -j option matching number of available
+	CPUs.
+
+	autobuild.sh: set a default value for AUTOBUILD_INSTALL_ROOT
+
+2016-01-11  Fabiano Fidêncio  <fidencio@redhat.com>
+
+	build: Don't use USE_GNOME2_MACROS
+	The following warning was shown when running autogen.sh:
+	***Warning*** USE_GNOME2_MACROS is deprecated, you may remove it from
+	autogen.sh
+
+	build: Don't set PKG_NAME
+	The following warning was shown when running autogen.sh:
+	***Warning*** PKG_NAME is deprecated, you may remove it from autogen.sh
+
+	Use SOUP_VERSION_MAX_ALLOWED
+	In order to avoid using a too new libsoup API.
+
+	Use GLIB_VERSION_MAX_ALLOWED
+	In order to avoid using a too new GLib API.
+
+	Remove checks/code for GLib older than 2.35.1
+	As now we depend on GLib 2.36, let's remove all checks/code that depend
+	on an older version than the one we require.
+
+	Use GTask instead of GSimpleAsyncResult
+	Instead of using GSimpleAsyncResult, use the new GTask API, which is
+	much more straightforward.
+	For using the new GTask API, let's bump GIO (part of GLib) dependency
+	version to 2.36.
+	what is safe based on major distro support:
+	- Debian Jessie: glib-2.42
+	- RHEL-7.1: glib-2.40
+	- SLES12: glib-2.38
+	- Ubuntu LTS 14.04: glib-2.40
+
+2016-01-08  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.3.0
+
+2015-12-16  Daniel P. Berrange  <berrange@redhat.com>
+
+	Switch to 0.3.0 for next release
+	Since we have had a major change in the way we process the
+	libosinfo database files, this would be a good time to
+	switch to 0.3.0 for release numbers
+
+2015-11-20  Christophe Fergeau  <cfergeau@redhat.com>
+
+	configure: bump libsoup version to 2.42
+	By bumping libsoup version, we are fixing a few deprecated warnings in
+	our tests (use SoupSession directly rather than SoupSessionAsync) and as
+	a side effect we don't need libsoup-gnome anymore.
+
+	Based on a patch from Fabiano Fidêncio <fidencio@redhat.com>
+
+2015-10-20  Daniel P. Berrange  <berrange@redhat.com>
+
+	loader: implement new semantics for entity overriding
+	This implements the new scheme for allowing entities to
+	be overridden. If an XML file relative path matches one
+	in an earlier datbase directory, the original file is
+	not loaded at all. Any files in a ENTITY-NAME.d will
+	now augment earlier data rather than replace it.
+
+	eg consider these files
+
+	1. /usr/share/libosinfo/db/os/fedoraproject.org/fedora-22.xml
+	2. /etc/libosinfo/db/os/fedoraproject.org/fedora-22.xml
+	3. $HOME/.config/libosinfo/db/os/fedoraproject.org/fedora-22.d/extra.xml
+
+	File #1 will not get loaded, because file #2 is detected
+	as a full override. File #2 will get loaded to define the
+	main Fedora 22 OS, and then file #3 will get loaded to
+	augment the main data.
+
+	Most of the PCI and USB device info in the local DB is
+	just augmenting the pci.ids and usb.ids master files,
+	so these need to move to .d directories now
+
+	loader: rework handling of pci.ids and usb.ids
+	Currently we have the option to download pci.ids/usb.ids or
+	symlink to the distro provided version given to configure.
+
+	Change configure so that it searches for the files in a
+	variety of expected locations. This ensures we always use
+	the external files, in any modern Linux distro, without
+	the user needing to give an arg. We look for them in
+
+	   /usr/share/hwdata/{pci.ids,usb.ids} (RHEL/Fedora)
+	   /usr/share/misc/{pci.ids,usb.ids}   (Ubuntu/Debian/Gentoo)
+	   /usr/share/{pci.ids,usb.ids}        (SLES/OpenSuse)
+
+	Instead of loading the pci.ids/usb.ids files as part of
+	the main database file enumeration process, explicitly
+	load them from their expected location. This avoids the
+	need to symlink the distro provided files into the database
+	dir.
+
+	Update ignore files for new database layout
+
+	data: remove pluralization from data directories
+	eg instead of platforms/qemu.org/qemu-1.2.0.xml we just have
+	platform/qemu.org/qemu-1.2.0. The top level directory name
+	now matches the entity name exactly
+
+	data: split devices into one file per device
+
+	data: split windows-* into one file per install script
+
+	data: split ubuntu into one file per install script
+
+	data: split rhel into one file per install script
+
+	data: split fedora into one file per install script
+
+	data: split debian into one file per install script
+
+	data: split x11-keyboard into one file per datamap
+
+	data: split windows-lang into one file per datamap
+
+	data: split xen into one file per platform
+
+	data: split rhel-xen into one file per platform
+
+	data: split qemu into one file per platform
+
+	data: split kvm into one file per platform
+
+	data: split ubuntu into one file per OS
+
+	data: split suse into one file per OS
+
+	data: split solaris into one file per OS
+
+	data: split rhel into one file per OS
+
+	data: split opensuse into one file per OS
+
+	data: split openbsd into one file per OS
+
+	data: split netware into one file per OS
+
+	data: split netbsd into one file per OS
+
+	data: split mandrake into one file per OS
+
+	data: split mageia into one file per OS
+
+	data: split macos into one file per OS
+
+	data: split gnome into one file per OS
+
+	data: split freebsd into one file per OS
+
+	data: split fedora into one file per OS
+
+	data: split dos into one file per OS
+
+	data: split debian into one file per OS
+
+	data: split centos into one file per OS
+
+	data: split altlinux into one file per OS
+
+	data: rename 'hypervisors' to 'platforms'
+	The database directory name matches the object name, except in
+	the case of the platform object, where the directory is named
+	"hypevisors". Change the dir name to "platforms" to be consistent.
+
+	docs: add document describing database organization
+	Add a document that sets out the desired end goal for the
+	database organization that the following patches will move
+	towards.
+
+	docs: describe entity URI ID scheme
+	Add a doc describing the best practice guidelines around
+	the format of URIs for various entities.
+
+2015-09-25  Daniel P. Berrange  <berrange@redhat.com>
+
+	build: fix path to locale files in mingw RPM
+	The mingw RPM spec listed the locale files in the libdir
+	instead of datadir
+
+	build: fix ChangeLog generation in VPATH build
+	When running 'make dist' from a VPATH, the ChangeLog file
+	is not generated because it doesn't find the .git directory
+
+2015-08-26  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Ditch udev rule
+	New udev/blkid expose more ISO9660 properties that apps can grab and
+	set on install media for detection to work. As a result our udev rule
+	becomes redundant.
+
+	This improves system bootup time conciderably if there is an ISO9660
+	media inserted during bootup as our udev rule needed to parse the XML
+	etc and is therefore pretty slow (keeping in mind that a few seconds are
+	a long time in the land of modern udev/systemd).
+
+2015-08-17  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Bump version
+
+2015-05-27  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.12
+
+	NEWS: Fix year for last 2 releases
+
+2015-05-07  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	build: Ignore 'strings exceeding C90 limit' warning
+	We don't really need to care about C90 compliance (it's pretty old
+	standard by now) to have to limit our strings to 509 characters.
+
+2015-03-15  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Bump version
+
+2014-09-22  Cole Robinson  <crobinso@redhat.com>
+
+	gitignore: Ignore build-aux/compile
+	Which appears on f21
+
+2014-09-21  Cole Robinson  <crobinso@redhat.com>
+
+	m4: Update manywarnings from gnulib
+	Fixes these noisy errors on Fedora 21:
+
+	gcc: warning: switch '-Wmudflap' is no longer supported
+
+2014-08-19  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.11
+
+2014-08-06  Giuseppe Scrivano  <gscrivan@redhat.com>
+
+	cfg.mk: enable sc_prohibit_atoi_atof and skip it for tests
+	Avoid the usage of atoi and atof which are believed to be not safe, as
+	they don't do any error reporting.
+
+	cfg.mk: enable and fix sc_space_tab
+	It checks that tab indentation is not used together with white spaces
+	indentation.
+
+	cfg.mk: enable more syntax-check tests
+
+	maint.mk: update from gnulib
+
+2014-06-04  Giuseppe Scrivano  <gscrivan@redhat.com>
+
+	enforce bracket spacing with a syntax rule
+	The build-aux/bracket-spacing.pl script was copied from libvirt.
+
+	tools: fix spacing to satisfy sc_bracket_spacing_check
+
+2014-04-16  Cole Robinson  <crobinso@redhat.com>
+
+	Export OSINFO_*_VERSION values
+	There isn't any to get the version number when using libosinfo from
+	python. Export the VERSION macros, similar to what gtk does.
+
+2014-03-26  Cole Robinson  <crobinso@redhat.com>
+
+	Update .gitignore
+	It was missing mageia.xml. Ignore all xml files from data/oses as they will
+	be generated from .xml.in files in order to integrate translations.
+
+	Based on a patch from Cole Robinson.
+
+2014-03-20  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.10
+
+2014-03-14  Christophe Fergeau  <cfergeau@redhat.com>
+
+	README: Fix typo
+	This fixes a typo in the 'Patch submission' header
+
+2014-02-28  Giuseppe Scrivano  <gscrivan@redhat.com>
+
+	README: fix mailing list URL
+
+2014-01-17  Ryan Lortie  <desrt@desrt.ca>
+
+	Switch to using the upstream m4 macros for GObject-introspection integration.
+	https://fedorahosted.org/libosinfo/ticket/11
+
+2013-12-16  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.9
+
+2013-12-11  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add scripts for validating the libosinfo.syms file
+	Import two test scripts from libvirt code which validate that
+	all symbols in libosinfo.syms exist in the ELF binary, and
+	also validate the alphabetical sorting. These are hooked up
+	to run with 'make check'.
+
+2013-10-16  Fabiano Fidêncio  <fabiano@fidencio.org>
+
+	configure: Fix mailing list address
+
+2013-10-03  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post release version bump
+
+2013-09-27  Christophe Fergeau  <cfergeau@redhat.com>
+
+	Use latest warnings.m4 from gnulib
+	The one we were using does not work properly with clang, causing
+	the build process to try to use -f/-W options that are not
+	supported by clang.
+
+2013-09-16  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.8
+
+	Update .gitignore
+
+2013-09-09  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	build: Fix build against latest intltool
+	The use of IT_PROG_INTLTOOL and AM_GNU_GETTEXT together is not
+	supported anymore apparently.
+
+	Without this change you'll get this error at the end of configure script
+	run:
+
+	config.status: error: po/Makefile.in.in was not created by intltoolize.
+
+2013-05-13  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.7
+
+2013-04-11  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	(Very late) post-release version bump
+
+2013-04-09  Fabiano Fidêncio  <fidencio@redhat.com>
+
+	Update .gitignore
+
+2013-04-09  Daniel P. Berrange  <berrange@redhat.com>
+
+	Auto-generate AUTHORS file from GIT logs
+	Rather than trying to manually keep track of authors,
+	just auto-generate the list from GIT logs
+
+2013-04-08  Daniel P. Berrange  <berrange@redhat.com>
+
+	Disable static libraries by default
+	Every source file is currently built twice by libtool, once for
+	the shared library and once for the static library. Static libs
+	are not commonly packaged by distros and slow down compilation
+	time by almost 100% compared to a shared-only build time.
+
+	Time for non-parallel make
+
+	      shared only: 22 secs
+	  shared + static: 40 secs
+
+	Those few people who really want them, can pass --enable-static
+	to configure
+
+	Disabling them by default requires use of LT_INIT. We don't need
+	to support older libtool, so drop use of AM_PROG_LIBTOOL entirely.
+	Also add the 'win32-dll' flag, since that should have been there
+	already
+
+2013-03-29  Christophe Fergeau  <cfergeau@redhat.com>
+
+	Add Andreas to AUTHORS
+
+2013-03-18  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.6
+
+2013-03-06  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post-release version bump
+
+2013-03-05  Christophe Fergeau  <cfergeau@redhat.com>
+
+	spec: Don't require udev on newer distros
+	96c66b8 disabled building of the udev rule on newer Fedoras, however
+	the .spec still has a Requires: udev, which is not relevant
+	when the udev rule is not built.
+
+	Allow to use system pci.ids/usb.ids files
+	Most distros already ship copies of pci.ids/usb.ids. This commit
+	allows to make use of these rather than the ones shipped with
+	libosinfo. This is achieved through the use of
+	--with-usb-ids-path and --with-pci-ids-path configure flags.
+
+2013-03-05  Cole Robinson  <crobinso@redhat.com>
+
+	spec: Add explicit dep on pod2man
+	pod2man used to be in the default Fedora build root, but that's
+	changed in current rawhide.
+
+	The containing package is perl-podlators, but since that package
+	doesn't exist on F18 and earlier, it's easiest just to depend on
+	the needed binary.
+
+2013-03-04  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.5
+
+2013-02-22  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add pod2man dep to mingw-libosinfo.spec.in
+
+	Fixes to mingw RPM spec from Fedora
+	Remove the .la files.
+	Remove the man pages
+
+2013-02-19  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.4
+
+2013-02-19  Christophe Fergeau  <cfergeau@redhat.com>
+
+	spec: Disable udev rule on newer Fedoras
+	Changes in udev > 197 and libblkid > 2.22.2 have made this rule obsolete.
+
+2013-02-11  Cole Robinson  <crobinso@redhat.com>
+
+	.gitignore: Add latest hypervisors and oses
+
+	install-script tool: Fix compiler warning
+	osinfo-install-script.c: In function 'main':
+	osinfo-install-script.c:245:19: error: 'dir' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+	osinfo-install-script.c:196:12: note: 'dir' was declared here
+
+	And add me to AUTHORS to appease syntax-check
+
+2013-02-11  Christophe Fergeau  <cfergeau@redhat.com>
+
+	spec: Switch URL to libosinfo.org
+	Now that libosinfo has an official website, let's point the .spec
+	at it.
+
+2013-02-07  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Add Marc-André to AUTHORS
+	Fixes `make syntax-check`
+
+2013-01-22  Michal Privoznik  <mprivozn@redhat.com>
+
+	Don't redefine _FORTIFY_SOURCE macro
+	If the _FORTIFY_SOURCE has been already defined, we unconditionally
+	redefine it, leaving us with warning/error thrown at compilation time.
+
+2013-01-21  Marc-André Lureau  <marcandre.lureau@redhat.com>
+
+	build-sys: g_type_init() is deprecated in 2.36
+
+2013-01-15  Daniel P. Berrange  <berrange@redhat.com>
+
+	Update RPM specs to include datamaps & locale files
+
+2013-01-15  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post-release version bump
+
+2013-01-14  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.3
+
+	Fix `make syntax-check`
+	* Add Yuri Chornoivan to AUTHORS file.
+	* Remove osinfo/osinfo_install_config.c from translated sources.
+
+2013-01-02  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	configure: Use LINGUAS file
+	Setting ALL_LINGUAS in configure.in is obsolete according to po.m4 in
+	favor of LINGUAS file. This is the reason why all (as far as I can see)
+	GNOME modules use LINGUAS file.
+
+	Also the rule in configure.ac creates broken Makefile if there is more
+	than one translation files:
+
+	[zeenix@z-laptop libosinfo]$ make
+	Makefile:166: *** missing separator.  Stop.
+	[zeenix@z-laptop libosinfo]$ head -n 166 Makefile|tail -n 2
+	ALL_LINGUAS = pl
+	uk
+
+2012-12-13  Christophe Fergeau  <cfergeau@redhat.com>
+
+	win: Add language information to Windows medias
+	Now that libosinfo knows how to use the l10n-language OsinfoDB attribute,
+	we can add this data to the various Windows <media> definitions in
+	the database.
+
+	build-sys: Build data/ before test/
+	Some test cases use the in-tree database data. Since some database files
+	are transformed from .xml.in to .xml during build, it's better to
+	build data/ first to ensure they are there when tests try to use
+	this data.
+
+2012-12-11  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post release version bump
+
+2012-12-10  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.2
+
+2012-12-01  Christophe Fergeau  <cfergeau@redhat.com>
+
+	Update .gitignore
+	Add generated enumeration C/H files
+
+2012-11-10  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Use glib-mkenums to register enums with glib
+	This commit adds the generation of osinfo_enum_types.[ch] using
+	glib-mkenums. These files will register the various enums that will get
+	added to osinfo header files with glib.
+
+	Commit message shamelessly stolen from a similar commit to libvirt-glib
+	by Christophe Fergeau <cfergeau@redhat.com>.
+
+2012-11-08  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Bump version
+
+2012-11-06  Eric Blake  <eblake@redhat.com>
+
+	maint: update to latest gnulib maint.mk
+	* maint.mk: Resynchronize from gnulib.
+	* cfg.mk (_gl_translatable_string_re): Reflect new gnulib naming.
+
+2012-10-31  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Steal libvirt magic for picking translation files
+	Since we don't keep a static LINGUAS file, we need to do this for
+	intltool to pick-up our translation (.po) files.
+
+	Translate all (potentially) user visible strings
+	Make some strings more translator-friendly at the same time.
+
+2012-10-30  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	autogen: Remove redundant intltoolize call
+	gnome-autogen.sh calls this for us.
+
+	Thanks to Christophe Fergeau <cfergeau@redhat.com> for pointing this out.
+
+	Update .gitignore
+
+2012-10-29  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Mark obvious strings in DB for translation
+	Mark 'name' and 'vendor' in oses and hypervisor, and 'name' in devices
+	for translation.
+
+	This implies that now we generate the actual XML files to automatically
+	get translations inserted into them.
+
+	Co-author: Eric Blake <eblake@redhat.com>
+
+2012-10-29  Eric Blake  <eblake@redhat.com>
+
+	maint.mk: Resync from gnulib.
+	AUTHORS: Add myself.
+
+2012-10-26  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Add translation framework
+	Note that we are calling bindtextdomain() from Loader's class init.
+	AFAICT, its a common practice in libraries without any main _init()
+	function to make this call in init of the most common/useful class (e.g
+	gdk-pixbuf and gdbus).
+
+	Update .gitignore
+
+2012-10-19  Michal Privoznik  <mprivozn@redhat.com>
+
+	AUTHORS: Add David to the authors file
+	as he contributed by fixing udev rule.
+
+2012-10-12  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.1
+
+2012-10-10  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	docs: Remove redundant .types file
+	Since we pass --rebuild-types to gtkdoc scanner, .types file is
+	generated for us and therefore we don't want to keep this in VCS.
+
+2012-10-02  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Bump version
+
+2012-09-28  Michal Privoznik  <mprivozn@redhat.com>
+
+	RNG: Move product-attr and product-content to interleave
+
+2012-08-31  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.2.0
+
+2012-08-23  Daniel P. Berrange  <berrange@redhat.com>
+
+	Bump version to 0.2.0 to recognise major new features
+
+2012-08-23  Fabiano Fidêncio  <fabiano@fidencio.org>
+
+	Update README file
+	Add dependencies needed by install scripts
+
+2012-08-23  Daniel P. Berrange  <berrange@redhat.com>
+
+	Update git ignore rules
+
+	Add data files for Fedora & Windows unattended installs
+	For Fedora this adds a kickstart file template which self-adapts
+	to all Fedora versions 1-> 16
+
+	For Windows this adds two file templates, one using the legacy
+	SIF .ini file format for Win2k3 or earlier, and the other using
+	the modern unattended XML format for Win2k8 or newer
+
+	Add a command line tool for generating install scripts
+
+	Add APIs for dealing with installer automation scripts
+	This introduces two new objects
+
+	 - OsinfoInstallConfig - stores configuration parameters which get
+	   substituted into the install script template.
+	 - OsinfoInstallScript - provides a template and the mechanism for
+	   turning it into an install script using XSLT
+
+	Misc Fedora review fixes to Mingw RPM specfile
+
+2012-06-20  Daniel P. Berrange  <berrange@redhat.com>
+
+	Fix source URL for mingw-libosinfo.spec.in
+
+	Convert to build with mingw64 toolchain
+
+2012-06-14  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add Wanlong Gao to AUTHORS file
+
+2012-06-11  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post release version bump
+
+	Release 0.1.2
+
+2012-06-08  Christophe Fergeau  <cfergeau@redhat.com>
+
+	build: allow building with newer glibc-headers and -O0
+	Commit log and autoconf snippet written by Eric Blake for libvirt.
+
+	glibc 2.15 (on Fedora 17) coupled with explicit disabling of
+	optimization during development dies a painful death:
+
+	In file included from /usr/include/limits.h:27:0,
+	                 from /usr/lib/gcc/x86_64-redhat-linux/4.7.0/include/limits.h:169,.
+	                 from /usr/lib/gcc/x86_64-redhat-linux/4.7.0/include/syslimits.h:7,
+	                 from /usr/lib/gcc/x86_64-redhat-linux/4.7.0/include/limits.h:34,
+	                 from util/bitmap.c:26:
+	/usr/include/features.h:314:4: error: #warning _FORTIFY_SOURCE requires compiling with optimization (-O) [-Werror=cpp]
+	cc1: all warnings being treated as errors
+
+	Work around this by only conditionally defining _FORTIFY_SOURCE,
+	in the case where glibc can actually use it.  The trick is using
+	AH_VERBATIM instead of AC_DEFINE.
+
+	* m4/libosinfo-compile-warnings.m4 (LIBOSINFO_COMPILE_WARNINGS): Squelch
+	_FORTIFY_SOURCE when needed to avoid glibc #warnings.
+
+2012-05-15  Christophe Fergeau  <cfergeau@redhat.com>
+
+	Add missing % to %{rhel} macro
+	This fixes the previous commit.
+
+	Fix spec file for RHEL builds
+	%fedora is not defined when building for RHEL, so we need to use
+	%{?fedora} instead of %{fedora}. This commit also makes sure that
+	newer RHELs will build libosinfo with introspection support.
+
+2012-04-12  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post release version bump
+
+	There is no libsoup-gnome-devel package
+
+2012-04-12  Daniel P. Berrange  <berrange@redhat.com>
+
+	Don't generate man pages in source directory
+
+2012-04-12  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release notes for 0.1.1
+
+2012-03-27  Christophe Fergeau  <cfergeau@redhat.com>
+
+	configure.ac: don't error out when vala autodetection fails
+	When --enable-vala or --disable-vala are not passed to configure,
+	configure.ac automatically checks for vala availability. However,
+	in this case, it's erroring out when vapigen cannot be found instead
+	of silently disabling it.
+
+	configure.ac: set VAPIGEN when --enable-vala is passed
+	It was only set when the vala detection was automatic (ie no
+	--enable-vala on the command line)
+
+2012-03-23  Fabiano Fidêncio  <fabiano@fidencio.org>
+
+	Add missing initializers for OsinfoLabel structs
+
+2012-03-21  Daniel P. Berrange  <berrange@redhat.com>
+
+	Move database files into $datadir/db instead of $datadir/data
+
+2012-03-15  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add osinfo-query man page to RPMs
+
+2012-03-14  Daniel P. Berrange  <berrange@redhat.com>
+
+	Remove obsolete scripts for PCI/USB id conversion
+	The osinfo-pciids-convert and osinfo-usbids-convert scripts
+	are no longer required, since we can load the data files
+	natively. Remove them to avoid a runtime dep on Perl.
+
+2012-03-13  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add a 'osinfo-query' command line tool
+	Enable end users to search the database with a new osinfo-query
+	command. For example
+
+	$ osinfo-query --fields=short-id,name os vendor="Fedora Project"
+	 Short ID             | Name
+	----------------------+------------------
+	 fedora1              | Fedora Core 1
+	 fedora2              | Fedora Core 2
+	 fedora3              | Fedora Core 3
+	 fedora4              | Fedora Core 4
+	 fedora5              | Fedora Core 5
+	 fedora6              | Fedora Core 6
+	 ...
+
+	Update git ignore rules
+
+2012-02-24  Daniel P. Berrange  <berrange@redhat.com>
+
+	Import GNULIB's syntax checking rules
+
+	Add libosinfo.rng to mingw32 spec
+
+	Normalize whitespace at end of file
+
+	Fill out AUTHORS file
+
+	Death to TABs
+
+	Switch over to GNULIB's compiler warning code
+
+	Add a man page for the osinfo-detect command
+
+	Add a test case which validates all schemas in tree
+
+	Add an osinfo-db-validate command for verifying XML files
+	The osinfo-db-validate command takes a list of paths or URIs
+	on the command line and validates them against the RNG
+	schema
+
+	Add an RNG schema for the libosinfo XML documents
+	Create an RNG schema that will be installed into
+	/usr/share/libosinfo/schemas/libosinfo.rng and can
+	be used to validate XML files
+
+2012-02-23  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add test for tree URIs
+
+	Update git ignore files
+
+2012-02-22  Daniel P. Berrange  <berrange@redhat.com>
+
+	Fix make dist
+	* configure.ac: Require POSIX tar format for long filenames
+	* test/Makefile.am: Include isodata/ in dist
+	* test/test-isodetect.c: Fix VPATH builds
+	* test/test-mediauris.c: Skip network tests unless LIBOSINFO_NETWORK_TESTS is set
+
+	Add test case for validating all URIs
+
+2012-02-21  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add test case for validating ISO detection
+
+2012-02-11  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post release version bump
+
+2012-02-07  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.1.0
+
+2012-01-19  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Post release version bump
+
+2012-01-16  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.0.5
+
+2012-01-10  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Bump version
+
+2011-12-19  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.0.4
+
+2011-12-16  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Release 0.0.3
+
+2011-11-24  Daniel P. Berrange  <berrange@redhat.com>
+
+	Update to newer COPYING.LIB file with correct FSF address
+
+	Also include libosinfo.spec in tar.gz
+
+	Update RPM spec with tweaks from Fedora submission
+
+2011-11-23  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Bump version
+
+2011-11-22  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Remove contributors list from NEWS file
+	This release is out but doing this so I don't forget the rule of not
+	including contributors' list in next release announcement.
+
+	Release 0.0.2
+
+2011-11-21  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add homepage/mailing list / download links to README
+
+2011-11-16  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Test for check if tests are enabled, not gir
+
+2011-10-25  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	First public release
+
+	Generate ChangeLog from git history on dist
+	Stole the Makefile.am rule and gitlog-to-changelog from libvirt.
+
+	Don't ignore the whole build-aux directory
+
+	Add a MAINTAINERS file
+
+	Update AUTHORS file
+
+2011-10-21  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Improved README file
+
+2011-10-05  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Let there be Vala bindings!
+	Generate Vala bindings if vapigen tool is available, unless explicitly
+	asked not to.
+
+2011-09-23  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Better udev rule installation
+	Provide a configure option to set the udev rule directory. If this
+	option is not set, udev directory defaults to '$prefix/lib/udev/rules.d'
+	unless $prefix is '/usr' in which case it defaults to '/lib/udev/rules.d'.
+
+2011-09-22  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Add udev rules file to RPM package
+
+2011-09-02  Daniel P. Berrange  <dan@berrange.com>
+
+	Add osinfo-detect.exe to the mingw32 RPM spec
+
+2011-09-02  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Add Udev support
+	If enabled, provide a udev rule to listen to insertion/removal of
+	ISO9660 media and sets some helpful (to apps) properties on the device
+	if media is bootable.
+
+2011-09-01  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+
+	Add utility app that detects OS given a media
+	Given a path to a ISO9660 image/device, detects if media is bootable and
+	the relavent OS if media is an installer for it.
+
+2011-06-01  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add some more realistic data files
+	Start on basic metadata for Fedora/RHEL and QEMU/Xen
+
+2011-04-19  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add some scripts for converting USB/PCI ID lists to XML
+	Add some scripts which are able to convert from the raw USB
+	and PCI device ID lists to the osinfo XML format. Do not
+	actually use these scripts by default though, because the
+	osinfo loader can read the native formats *much* faster
+	than reading the XML variant
+
+	Pull down USB and PCI device IDs from sourceforge
+	Populate the database with all USB and PCI device IDs known
+	to the master sourceforge databases
+
+2010-09-02  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add notes about possible data sources for populating the database
+	Add notes about the possible sources for finding device info
+	about operating systems and hypervisor platforms
+
+	* docs/data-sources.txt: Note data sources for OS and hypervisors
+
+	Introduce a OsinfoDeployment object
+	The supported devices for deploying an OS on a platform are
+	tracked as part of the main OS device list. This is not
+	sufficiently flexible because it does not allow for tracking
+	extra metadata against a (os, platform) pair. Introduce a
+	new "deployment" object to track the metadata for deploying
+	an OS on a platform.
+
+	* docs/object-model.fig: Illustrate the object model
+	* data/libosinfo-dummy-data.xml: Introduce deployment
+	  metadata
+	* examples/demo.py, examples/demo.js: Update for new
+	  APIs
+	* osinfo/Makefile.am, osinfo/libosinfo.syms,
+	  osinfo/osinfo.h, osinfo/osinfo_db.c, osinfo/osinfo_db.h
+	  osinfo/osinfo_db.h, osinfo/osinfo_deployment.h,
+	  osinfo/osinfo_deploymentlist.c, osinfo/osinfo_deploymentlist.h,
+	  osinfo/osinfo_devicelink.c, osinfo/osinfo_loader.c: Introduce
+	  an explicit deployment object
+	* osinfo/osinfo_os.c, osinfo/osinfo_os.h, test/test-db.c,
+	  test/test-os.c: Remove tracking of hypervisor preferred
+	  devices
+	* osinfo/osinfo_devicelinkfilter.c,
+	  osinfo/osinfo_devicelinkfilter.h: Allow filtering against
+	  a link and its target device at the same time.
+
+	Introduce a new OsinfoProduct abstract class
+	It is neccessary to track upgrades/clones/derives relationships
+	for platforms as well as operating systems. Introduce a common
+	parent class for both called OsinfoProduct
+
+	* data/libosinfo-dummy-data.xml: Make platform XML use the
+	  common product XML attributes/relationships
+	* docs/reference/Libosinfo-docs.xml, docs/reference/Libosinfo-sections.txt,
+	  docs/reference/Libosinfo.types: Update for new/renamed classes
+	* osinfo/Makefile.am, osinfo/libosinfo.syms,
+	  osinfo/osinfo.h: New OsinfoProduct class
+	* osinfo/osinfo_product.c, osinfo/osinfo_product.h,
+	  osinfo/osinfo_productlist.h, osinfo/osinfo_productlist.c: New
+	  classes
+	* osinfo/osinfo_os.c, osinfo/osinfo_os.h,
+	  osinfo/osinfo_platform.c, osinfo/osinfo_platform.h: Change
+	  to inherit from OsinfoProduct
+	* osinfo/osinfo_oslist.c, osinfo/osinfo_oslist.h,
+	  osinfo/osinfo_platformlist.c, osinfo/osinfo_platformlist.h:
+	  Change to inherit from OsinfoProductList
+	* osinfo/osinfo_db.c, osinfo/osinfo_db.h, osinfo/osinfo_loader.c:
+	  Update for new class hierarchy
+	* osinfo/osinfo_osfilter.c, osinfo/osinfo_osfilter.h,
+	  osinfo/osinfo_osfilter.h, osinfo/osinfo_productfilter.h: Rename
+	  filter class
+
+2010-09-01  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add two examples using GObject introspection
+	Add two example programs using GObject introspection bindings
+	for Python (PyGObject) and Javascript (GJS)
+
+	* examples/demo.js: Javascript demo
+	* examples/demo.py: Python demo
+	* Makefile.am, configure.ac: Add examples Makefile
+	* examples/Makefile.am: Include demos in dist
+	* libosinfo.spec.in: Include demo programs + docs
+	* mingw32-libosinfo.spec.in: Kill docs
+
+	Ensure args can be passed to autogen.sh
+	Ensure that autogen.sh honours args passed to it, but passing
+	them on down to gnome-autogen.sh, enabling usage such as
+
+	   ./autogen.sh --enable-coverage
+
+	* autogen.sh: Pass command line args down to gnome-autogen.sh
+
+	Add API docs for all public methods
+	Add GTK-DOC api docs for all public methods, signals, objects,
+	enums, etc. Include annotations required for GObject Introspection
+	to get reference counting / memory allocation correct when doing
+	automatic language binding generation
+
+	* osinfo/*.c: Add API docs for all methods / signals / objects / enums
+	* osinfo/*.h: Ensure parameter names match those in the corresponding
+	  .c file implementation to avoid confusing gtk-doc
+
+	Integrate gtk-doc into the build for API docs
+	* Makefile.am: Add docs subdir
+	* autogen.sh: Enable gtk-doc build by default
+	* configure.ac: Add check for gtk-doc
+	* doc/api.txt, doc/overview.txt: Remove inaccurate, outdated
+	  docs
+	* docs/Makefile.am: Add reference/ subdir
+	* docs/reference/: bare template for gtk-doc content
+
+2010-08-27  Daniel P. Berrange  <berrange@redhat.com>
+
+	Enable test suite during automated & RPM builds
+	* autobuild.sh: Enable tests
+	* configure.ac: Allow tests to be disabled for Win32
+	* libosinfo.spec.in: Enable tests
+	* libosinfo.spec.in: Disable tests
+	* test/test-loader.c, test/Makefile.am: Fix VPATH build
+
+	Ignore more test programs
+
+	Convert loader to use GIO
+	Direct use of POSIX/stdc I/O is deprecated in favour of
+	the GIO system. Re-write the OsinfoLoader to use GIO
+	for loading XML from arbitrary paths/uris.
+
+	* configure.ac: Check for GIO library
+	* osinfo/Makefile.am: Link to GIO
+	* osinfo/osinfo_loader.c, osinfo/osinfo_loader.h: Port
+	  to GIO
+	* test/osinfo.suppression: Supress many GIO data types
+	* test/test-loader.c: update for new GIO api.
+
+	Lots of code fixes based on results from testsuite
+	This fixes numerous memory leaks throughout the code
+	identified by valgrind. It also fixes the const-ness
+	of many parameters
+
+	* osinfo/osinfo_dataread.c: Rewrite from scratch using DOM
+	  APIs instead of streaming APIs
+	* osinfo/osinfo_db.h, osinfo/osinfo_db.c: Remove 'libvirtVer' property
+	  and declare all gchar * parameters to be const. Fix some mem leaks
+	* osinfo/osinfo_entity.c, osinfo/osinfo_entity.h: Remove some
+	  unnecessary strdup()s and fix some mem leaks
+	* osinfo/osinfo_filter.c: Fix mem leaks
+	* osinfo/osinfo_hypervisor.c, osinfo/osinfo_os.c: Allow some
+	  object parameters to be NULL. Fix some mem leaks
+	* osinfo/osinfo_list.c: Fix some mem leaks
+	* osinfo/osinfo_osfilter.c: Fix some mem leaks
+
+	Comprehensive test suite
+	This adds a comprehensive test suite. Each test case
+	fulls covers a single class. Combined, they provide
+	100% function and 99% line coverage. All important
+	code branches are also covered.
+
+	* Makefile.am: Target to generate code coverage reports
+	* osinfo/Makefile.am: Add code coverage flags
+	* configure.ac: Enable use of 'check' for test suite
+	  and use of gcc coverage flags
+	* test/test-*.c: One test suite per class
+	* test/test-skeleton.c: Remove obsoleted test
+	* test/osinfo.suppression: supress valgrind warning for
+	  static data in glib type system
+	* test/Makefile.am: Link tests against libcheck library
+
+2010-08-26  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add missing AC_ARG_ENABLE declaration
+	The configure.ac script was missing the AC_ARG_ENABLE declaration
+	for the gobject introspection code
+
+	* configure.ac: Add AC_ARG_ENABLE
+
+2010-08-25  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add LGPLv2+ header to all source files
+	* osinfo/*.h, osinfo/*.c: Add license header text
+	* COPYING.LIB: LGPLv2+ license
+	* libosinfo.spec.in, mingw32-libosinfo.spec.in,
+	  Makefile.am: Use COPYING.LIB instead of COPYING
+
+	Add formal RPM build infrastructure
+	* autogen.sh: Rewrite to use gnome-autogen.sh
+	* autobuild.sh: Automated RPM build control script
+	* configure.ac: Generate RPM specfiles
+	* Makefile.am: Distribute RPM specfile templates
+	* libosinfo.spec.in, mingw32-libosinfo.spec.in: RPM specs
+	* osinfo/Makefile.am, osinfo/libosinfo.syms: Fix Win32
+	  portability problem
+
+	Add support for GObject introspection
+	Introspect the libosinfo API so that non-C language bindings
+	can be automagically generated
+
+	* osinfo/osinfo.h, osinfo/osinfo_dataread.c, osinfo/osinfo_db.h,
+	  osinfo/osinfo_device.h, osinfo/osinfo_devicelist.h,
+	  osinfo/osinfo_entity.h, osinfo/osinfo_filter.h,
+	  osinfo/osinfo_hypervisor.h, osinfo/osinfo_hypervisorlist.h,
+	  osinfo/osinfo_os.h, osinfo/osinfo_oslist.h: Add explicit
+	  includes to match build dependancies, to satisfy g-ir-scanner
+	  limitations. Rename enum values to allow them to be extracted
+	  with correct names
+
+	Add a pkg-config data file for building apps
+	* configure.ac: Generate libosinfo.pc
+	* osinfo/Makefile.am: Install pkg-config file
+	* osinfo/libosinfo-1.0.pc.in: Master pkg-config template
+
+	Use pkg-config for checking for libxml
+	Rather than creating huge amounts of m4 logic, just use pkg-config
+	to check for libxml2 library. Make libxml2 compulsory
+
+	* configure.ac: Simplify libxml2 check
+
+	Add proper ELF versioning
+	Rename library to libosinfo-1.0.la to allow parallel install if
+	we need to break ABI in the future. Add per-symbol version tagging
+	to allow fine grained automatic RPM dependancies. Make version
+	script portable to Win32
+
+	* configure.ac: Detect args for linker symbol file / format
+	* osinfo/Makefile.am: Rename library and use symbol versioning
+	* osinfo/libosinfo.syms: Symbol version script
+
+	Run configure at end of autogen.sh
+	It is usual practice to run configure at the end of
+	autogen.sh to save having to manually run it afterwards
+
+	* autogen.sh: Run configure
+
+	Remove osinfo common module
+	Finally all objects are fully private and the common
+	code module can be banished.
+
+	* osinfo/osinfo_common.c, osinfo/osinfo_common.h: Delete
+	* osinfo/Makefile.am, osinfo/osinfo.h: Remove osinfo_common.h
+	* configure.ac: Use osinfo/osinfo_db.c in CONFIG_SRCDIR
+	* osinfo/osinfo_dataread.c, osinfo/osinfo_db.c,
+	  osinfo/osinfo_db.h, osinfo/osinfo_device.h,
+	  osinfo/osinfo_devicelist.h, osinfo/osinfo_entity.c,
+	  osinfo/osinfo_entity.h, osinfo/osinfo_filter.c,
+	  osinfo/osinfo_hypervisor.h, osinfo/osinfo_hypervisorlist.h,
+	  osinfo/osinfo_list.h, osinfo/osinfo_os.c,
+	  osinfo/osinfo_os.h, osinfo/osinfo_oslist.h: Add the
+	  main object typedefs, previously in the common module.
+	  Rename osinfoRelationship to OsinfoOsRelationship.
+
+	Add decl for all _get_type() methods & enable warnings
+	Eliminate compile warnings about undeclared XXX_get_type()
+	methods, by adding declarations for all objects.
+
+	Switch to using standard GNOME m4 magic for compile
+	warnings. Force enablement of automake maintainer
+	mode, so that Makefile is re-generated if Makefile.am
+	ever changes. Enable silent build rules so that compile
+	warnings can be more easily spotted.
+
+	* Makefile.am: Whitespace tweak
+	* configure.ac: Remove -Wall, -Werror. Add
+	  GNOME_COMPILE_WARNINGS, GNOME_MAINTAINER_MODE_DEFINES,
+	  AM_MAINTAINER_MODE, AM_SILENT_RULES
+	* osinfo/*.h: Add XXX_get_type() declarations for all
+	  objects
+	* osinfo/Makefile.am: Add $(WARN_CFLAGS) to build
+
+	Move Makefile.am into each sub-dir
+	Move Makefile.am into each sub-dir so that built objects end
+	up in the same directory as the sources, instead of polluting
+	the top level. This will also enable the gobject introspection
+	makefile rules to be imported later
+
+	* .gitignore: test-skeleton & test-skeleton.sh
+	* Makefile.am: Remove all build rules, add SUBDIRS
+	* osinfo/Makefile.am: Add build rules for library
+	* test/Makefile.am: Add build rules for tests
+	* test/test-skeleton.c: Update to reflect changed
+	  current directory during test execution
+
+	Move all source & headers into osinfo/ directory
+	The GLib/GObject standard practice is to have all source and
+	header files in the same directory, named after the library
+	prefix. Move all headers from api/ and inc/ into src/, then
+	rename src/ to osinfo/
+
+	* src/*, api/*, inc/*: Move to osinfo/
+	* Makefile.am: Update build rules for changed locations
+	* configure.ac: change AC_CONFIG_SRCDIR
+
+2010-07-01  Arjun Roy  <arroy@redhat.com>
+
+	Moved over API to use glib/gobject. API definitions have changed, though functionality remains identical. Added new features to list classes.
+	TODO: Extensive testing. Codebase compiles and simplest test of
+	creating/destroying DB works, but more is required.
+
+2010-02-03  Arjun Roy  <arroy@redhat.com>
+
+	Added autogen.sh
+
+2010-02-03  Jim Meyering  <meyering@redhat.com>
+
+	autoconfiscate
+	* Makefile.am: New file.
+	* configure.ac: New file.
+	* Makefile: Remove.
+	* .gitignore: List ignorable files.
+
+2010-01-28  Arjun Roy  <arroy@redhat.com>
+
+	Updated README.
+	TODO:
+	1. Update docs
+	2. Better error handling and messages for reading XML data
+	3. More unit tests and more automation for unit tests.
+
+2010-01-26  Arjun Roy  <arroy@redhat.com>
+
+	Changed tests to accept data dir as a command line parameter.
+
+	Initial working codebase.
+
+2009-11-09  Arjun Roy  <arroy@redhat.com>
+
+	Added a few unit tests to the API for initializing/closing the library and setting hypervisors.
+	No implementation yet.
+
+2009-11-06  Arjun Roy  <arroy@redhat.com>
+
+	Initial commit with API definition, overview, and sample program.
+	No implementation at all yet.
