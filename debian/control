@@ -1,0 +1,30 @@
+Source: osinfo-db-tools
+Section: devel
+Priority: optional
+Maintainer: Guido Günther <agx@sigxcpu.org>
+Build-Depends:
+ autotools-dev,
+ debhelper (>= 10),
+ intltool,
+ libarchive-dev,
+ libglib2.0-dev,
+ libxml2-dev,
+ libxslt1-dev,
+Standards-Version: 3.9.8
+Homepage: https://libosinfo.org/
+Vcs-Git: https://anonscm.debian.org/pkg-libvirt/osinfo-db-tools.git
+Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/osinfo-db-tools.git
+
+Package: osinfo-db-tools
+Architecture: any
+Replaces: libosinfo-bin (<< 1.0.0~)
+Breaks: libosinfo-bin (<< 1.0.0~)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: libosinfo database tools
+ libosinfo is a GObject based library API for managing information about
+ operating systems, hypervisors and the (virtual) hardware devices they
+ can support. It provides APIs to match/identify optimal devices for deploying
+ an operating system on a hypervisor.
+ .
+ This package contains the tools for managing the installation, bundling and
+ distribution of libosinfo's database files.

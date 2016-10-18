@@ -1,0 +1,5 @@
+osinfo-db-tools (1.0.0-1) experimental; urgency=medium
+
+  * Initial release (Closes: #840387)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 18 Oct 2016 11:43:23 +0200
