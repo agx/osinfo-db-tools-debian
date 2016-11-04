@@ -1,3 +1,32 @@
+2016-10-26  Daniel P. Berrange  <berrange@redhat.com>
+
+	Add release notes for 1.1.0
+
+2016-10-20  Guido Günther  <agx@sigxcpu.org>
+
+	validate: correct help output
+	We validate files, don't install them
+
+	README: libarchive is required as well
+
+2016-10-19  Daniel P. Berrange  <berrange@redhat.com>
+
+	osinfo-db-export: add ability to include a license file
+	Add a "--license FILE-NAME" option to osinfo-db-export
+	which will add that reference FILE-NAME to the generated
+	archive as a file called "LICENSE" in the top level.
+
+2016-08-02  Daniel P. Berrange  <berrange@redhat.com>
+
+	Remove COPYING.LIB and clarify that this is GPL licensed
+	The COPYING.LIB file was a remnant from the libosinfo GIT
+	split. All the actual tools were under the GPLv2+, not the
+	LGPLv2+. Remove COPYING.LIB and fix spec file and README.
+
+2016-07-28  Daniel P. Berrange  <berrange@redhat.com>
+
+	Post-release version bump to 1.1.0
+
 2016-07-25  Daniel P. Berrange  <berrange@redhat.com>
 
 	osinfo-db-util: Update paths to be compliant with specification
@@ -479,8 +508,6 @@
 	gitignore: Ignore build-aux/compile
 	Which appears on f21
 
-2014-09-21  Cole Robinson  <crobinso@redhat.com>
-
 	m4: Update manywarnings from gnulib
 	Fixes these noisy errors on Fedora 21:
 
@@ -591,7 +618,7 @@
 
 	Release 0.2.7
 
-2013-04-11  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
+2013-04-12  Zeeshan Ali (Khattak)  <zeeshanak@gnome.org>
 
 	(Very late) post-release version bump
 
