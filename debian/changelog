@@ -1,3 +1,11 @@
+osinfo-db-tools (1.1.0-1) unstable; urgency=medium
+
+  * Upload to unstable
+  * [760ca9e] New upstream version 1.1.
+  * [225d013] Fix watch expression
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 04 Nov 2016 13:06:12 +0100
+
 osinfo-db-tools (1.0.0-1) experimental; urgency=medium
 
   * Initial release (Closes: #840387)
