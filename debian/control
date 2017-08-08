@@ -12,7 +12,7 @@ Build-Depends:
  libxslt1-dev,
 Standards-Version: 3.9.8
 Homepage: https://libosinfo.org/
-Vcs-Git: https://anonscm.debian.org/pkg-libvirt/osinfo-db-tools.git
+Vcs-Git: https://anonscm.debian.org/cgit/pkg-libvirt/osinfo-db-tools.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/osinfo-db-tools.git
 
 Package: osinfo-db-tools
